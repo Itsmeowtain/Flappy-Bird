@@ -1,0 +1,29 @@
+import java.awt.*;
+import javax.swing.*;
+import java.io.*;
+import javax.imageio.*;
+
+public class Flap {
+    public static void main(String[] args) throws Exception{
+        System.out.println("Welcome to Flappy Bird");
+        int boardWidth = 360;
+        int boardHeight = 640;
+
+        JFrame frame = new JFrame("Flappy Bird");
+        frame.setLocation(900,200);
+        frame.setResizable(false);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(boardWidth,boardHeight);
+        try {
+            Image icon = ImageIO.read(Flap.class.getResourceAsStream("resources/flappybird.png"));
+            frame.setIconImage(icon);
+           } catch (IOException e){
+            e.printStackTrace();
+           }
+
+        FlappyBird mainScreen = new FlappyBird();
+        frame.add(mainScreen);
+        frame.pack();
+        frame.setVisible(true);
+    }
+}
