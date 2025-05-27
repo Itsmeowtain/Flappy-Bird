@@ -1,0 +1,241 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Random;
+import javax.swing.*;
+
+public class FlappyBird extends JPanel implements ActionListener, KeyListener,MouseListener {
+    Image bgImg;
+    Image bottomPipe;
+    Image topPipe;
+    Image flappyImg;
+
+    FlappySound sound;
+
+    int boardWidth = 360;
+    int boardHeight = 640;
+    int restartButtonX = boardHeight/2;
+    int restartButtonY = boardHeight/2;
+    //Bird
+    int birdX = boardWidth/7;
+    int birdY = boardHeight/2;
+    int bWidth = 36;
+    int bHeight = 26;
+
+    class Bird {
+        int x = birdX;
+        int y = birdY;
+        int width = bWidth;
+        int height = bHeight;
+        Image img;
+
+        Bird(Image img){
+            this.img = img;
+        }
+    }
+
+    int pipeX = boardWidth;
+    int pipeY = 0;
+    int pipeWidth = 64;   // scaled by 1/6
+    int pipeHeight = 512;
+
+    class pipe {
+      int x = pipeX;
+      int y = pipeY;
+      int width = pipeWidth;
+      int height = pipeHeight;
+      Image img;
+      boolean passed = false;
+
+      pipe(Image img){
+        this.img = img;
+      }
+    }
+
+    Bird bird;
+    double score = 0;
+    double newHighScore = 0;
+    int velocityY = 0;
+    int velocityX = -4;
+    int gravity = 1;
+
+    Timer gameLoop;
+    Timer placePTimer;
+
+    ArrayList<pipe> pipes;
+    Random random = new Random();
+
+    boolean gameOver  = false;
+
+    FlappyBird(){
+        addKeyListener(this);
+        addMouseListener(this);
+        requestFocusInWindow();
+        setFocusable(true);
+        setPreferredSize(new Dimension(boardWidth,boardHeight));
+        setBackground(Color.blue);
+        
+        bgImg = new ImageIcon(getClass().getResource( "resources/flappybirdbg.png")).getImage();
+        flappyImg = new ImageIcon(getClass().getResource("resources/flappybird.png")).getImage();
+        topPipe = new ImageIcon(getClass().getResource("resources/toppipe.png")).getImage();
+        bottomPipe = new ImageIcon(getClass().getResource("resources/bottompipe.png")).getImage();
+
+        bird = new Bird(flappyImg);
+        pipes = new ArrayList<>();
+
+        placePTimer = new Timer(1500, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e){
+                placePipes();
+            }
+        });
+
+        placePTimer.start();
+
+        //game timer
+        gameLoop = new Timer(1000/60, this);
+        gameLoop.start();
+    }
+
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        draw(g);
+    }
+    
+    public void placePipes(){
+       int randomPipeY = (int) (pipeY - pipeHeight/4 - Math.random()*(pipeHeight/2));
+       pipe toppipe = new pipe(topPipe);
+       toppipe.y = randomPipeY;
+       pipes.add(toppipe);
+       
+       pipe bottompipe = new pipe(bottomPipe);
+       bottompipe.y = randomPipeY+630;
+       pipes.add(bottompipe);
+    }
+
+    public void draw(Graphics g){
+        //System.out.println("draw");
+        g.drawImage(bgImg, 0, 0, boardWidth, boardHeight, null);
+        g.drawImage(bird.img, bird.x, bird.y, bird.width, bird.height, null );
+
+        for(int i = 0; i < pipes.size();i++){
+            pipe p = pipes.get(i);
+            g.drawImage(p.img, p.x, p.y, p.width, p.height,null);
+        }
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Times New Roman", 1, 15));
+         if(gameOver){
+            g.drawString("Score: " + String.valueOf((int)score), boardWidth/2-30, 15);
+            g.drawRect(boardWidth/2-55, boardHeight/2-15, 110, 30);
+            g.drawString("GAME OVER", boardWidth/2-50, boardHeight/2+5);
+            if(score > newHighScore){
+                g.setColor(Color.yellow);
+                g.setFont(new Font("Comic Sans", 1, 20));
+                newHighScore = score; 
+                g.drawString("New High Score!: " + String.valueOf(newHighScore), boardWidth/2 - 80  , boardHeight/2 + 40);
+            }
+        }
+        else {
+          g.drawString("Score: " + score,boardWidth/2-30 , 15);
+        }
+    }
+
+    public void move(){
+
+        velocityY += gravity;
+        bird.y += velocityY;
+        bird.y = Math.max(bird.y, 0);
+        bird.y = Math.min(bird.y,boardHeight);
+
+        for(int i = 0; i < pipes.size();i++){
+            pipe p = pipes.get(i);
+            p.x += velocityX;
+           // int y = pipes.get(i).y;
+
+              if(collision(bird,p)){
+                gameOver = true;
+              }
+              if(!p.passed && bird.x > p.x + p.width){
+                p.passed = true;
+                score += 0.5;
+              FlappySound.playsound("point.wav");
+                System.out.println("Score:" + score);
+              }
+        }
+
+        if(bird.y+15 > boardHeight){
+            gameOver = true;
+        }
+    }
+    
+    public boolean collision(Bird a, pipe b){
+              boolean val = a.x < b.x + b.width &&
+               a.x + a.width > b.x &&
+               a.y < b.y + b.height &&
+               a.y + a.height > b.y;
+            if(val){
+               FlappySound.playsound("die.wav");
+            } 
+               return val;
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        move();
+        repaint();
+        if(gameOver){
+            placePTimer.stop();
+            gameLoop.stop();
+        }
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e){
+        if(!gameOver && e.getKeyCode() == KeyEvent.VK_SPACE){
+           velocityY = -9;
+           FlappySound.playsound("wing.wav");
+        }
+        else if(gameOver && e.getKeyCode() == KeyEvent.VK_SPACE){
+          gameOver = false;
+          new FlappyBird();
+          pipes.clear();
+          bird.x = birdX;
+          bird.y = birdY;
+          velocityY = 0;
+          score = 0;
+          gameLoop.restart();
+          placePTimer.restart();
+          repaint();
+          move();
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e){}
+
+    @Override
+    public void keyTyped(KeyEvent e){}
+
+    @Override
+     public void mousePressed(MouseEvent arg0) {
+            if (arg0.getButton() == MouseEvent.BUTTON1){
+                    System.out.println("Left button clicked");
+            } else if (arg0.getButton() == MouseEvent.BUTTON2){
+                    System.out.println("Middle button clicked");
+            } else if (arg0.getButton() == MouseEvent.BUTTON3) {
+                    System.out.println("Right button clicked");
+            } 
+        }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {}
+
+    @Override
+    public void mouseReleased(MouseEvent e) {}
+
+    @Override
+    public void mouseEntered(MouseEvent e) {}
+
+    @Override
+    public void mouseExited(MouseEvent e) {}
+}
