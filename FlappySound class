@@ -1,0 +1,43 @@
+import javax.sound.sampled.*;
+import java.io.*;
+import java.util.HashMap;
+
+public class FlappySound {
+    private static HashMap<String, Clip> clipCache = new HashMap<>();
+    
+    public static void playsound(String soundFile) {
+        try {
+            // Try to get cached clip
+            Clip clip = clipCache.get(soundFile);
+            
+            // If not cached, load and cache it
+            if (clip == null) {
+                File soundPath = new File("resources/" + soundFile);
+                AudioInputStream audioStream = AudioSystem.getAudioInputStream(soundPath);
+                clip = AudioSystem.getClip();
+                clip.open(audioStream);
+                clipCache.put(soundFile, clip);
+            }
+            
+            // Stop and reset the clip if it's still playing
+            if (clip.isRunning()) {
+                clip.stop();
+            }
+            clip.setFramePosition(0);
+            
+            // Play the sound
+            clip.start();
+            
+        } catch (Exception e) {
+            System.err.println("Error playing sound: " + e.getMessage());
+        }
+    }
+    
+    // Call this when closing the game
+    public static void cleanup() {
+        for (Clip clip : clipCache.values()) {
+            clip.close();
+        }
+        clipCache.clear();
+    }
+}
